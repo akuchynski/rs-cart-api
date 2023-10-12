@@ -1,28 +1,37 @@
-import { Injectable } from '@nestjs/common';
-
-import { v4 } from 'uuid';
-
-import { User } from '../models';
+import { Inject, Injectable } from '@nestjs/common';
+import { Pool } from 'pg';
+import { PG_CONNECTION } from '../../common/constants';
 
 @Injectable()
 export class UsersService {
-  private readonly users: Record<string, User>;
+  constructor(@Inject(PG_CONNECTION) private connection: Pool) {}
 
-  constructor() {
-    this.users = {}
+  async findOne(userId: string): Promise<any> {
+    const users = await this.connection.query(
+      `SELECT * FROM users WHERE id = $1`,
+      [userId],
+    );
+    return users.rows[0];
   }
 
-  findOne(userId: string): User {
-    return this.users[ userId ];
+  async findByName(name: string): Promise<any> {
+    const users = await this.connection.query(
+      `SELECT * FROM users WHERE name = $1`,
+      [name],
+    );
+    return users.rows[0];
   }
 
-  createOne({ name, password }: User): User {
-    const id = v4(v4());
-    const newUser = { id: name || id, name, password };
-
-    this.users[ id ] = newUser;
-
-    return newUser;
+  async create({ name, password, email }: Partial<any>): Promise<any> {
+    const users = await this.connection.query(
+      `INSERT INTO users (name, password, email) VALUES ($1, $2, $3) RETURNING id, name, email`,
+      [name, password, email],
+    );
+    return users.rows[0];
   }
 
+  async getAll(): Promise<any> {
+    const users = await this.connection.query(`SELECT * FROM users`);
+    return users.rows;
+  }
 }
